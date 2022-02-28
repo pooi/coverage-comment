@@ -1,0 +1,21 @@
+name: "Test coverage comment"
+description: "Leave a test coverage comment on pull request."
+author: "pooi (Taewoo You)"
+
+inputs:
+  github-token:
+    description: "secrets.GITHUB_TOKEN value"
+    required: true
+  xml-test-report-path:
+    description: 'The test report path (xml)'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - run: pip3 install -r $GITHUB_ACTION_PATH/requirements.txt
+      shell: bash
+    - name: Extract test coverage
+      shell: bash
+      run: |
+        $GITHUB_ACTION_PATH/main.py ${{ inputs.xml-test-report-path }} ${{ inputs.github-token }} ${{ github.event.pull_request.url }}
