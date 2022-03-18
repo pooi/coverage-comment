@@ -10,6 +10,23 @@ changed_file_target_type = ["INSTRUCTION", "LINE", "METHOD"]
 target_type = ["INSTRUCTION", "LINE", "METHOD", "CLASS"]
 
 
+def find_pull_request():
+    response = requests.get(
+        f"{github_api_url}/repos/{repository}/pulls",
+        headers=api_headers
+    )
+
+    if response.ok:
+        pull_requests = response.json()
+        for pull_request in pull_requests:
+            if pull_request["head"]["ref"] == branch:
+                return pull_request["url"]
+        return None
+    else:
+        print(f"FIND-PULL-REQUEST-ERROR, code={response.status_code}, body={response.json()}")
+        return None
+
+
 def get_pull_request_files():
     response = requests.get(
         f"{pull_request_url}/files?per_page=100",
@@ -157,15 +174,30 @@ def main():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 3:
+    if len(sys.argv) > 5:
         xml_path = sys.argv[1]
         github_token = sys.argv[2]
-        pull_request_url = sys.argv[3]
 
         api_headers = {
             'Accept': 'application/vnd.github.v3+json',
             'Authorization': f"token {github_token}"
         }
+
+        github_api_url = sys.argv[3]
+        repository = sys.argv[4]
+        branch = sys.argv[5]
+        branch = branch.split("/")[-1]
+
+        if len(sys.argv) > 6:
+            pull_request_url = sys.argv[3]
+        else:
+            pull_request_url = find_pull_request()
+
+        if pull_request_url is None:
+            print("CAN'T FIND PULL REQUEST")
+            exit(0)
+        else:
+            print(pull_request_url)
 
         main()
     else:
