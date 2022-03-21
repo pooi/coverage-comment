@@ -36,7 +36,7 @@ def get_pull_request_files():
     if response.ok:
         return response.json()
     else:
-        print(f"GET-PULL-REQUEST-FILED-ERROR, code={response.status_code}, body={response.json()}")
+        print(f"GET-PULL-REQUEST-FILES-ERROR, code={response.status_code}, body={response.json()}")
         return []
 
 
@@ -189,7 +189,7 @@ if __name__ == '__main__':
         branch = branch.split("/")[-1]
 
         if len(sys.argv) > 6:
-            pull_request_url = sys.argv[3]
+            pull_request_url = sys.argv[6]
         else:
             pull_request_url = find_pull_request()
 
