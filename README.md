@@ -6,10 +6,10 @@ This action leave a test coverage comment on pull request.
 
 ## Input
 
-|Name|Description|
-|---|---|
-|`github-token`|`secrets.GITHUB_TOKEN` value|
-|`xml-test-report-path`|Path of `.xml` type TEST REPORT generated from `jacoco` or `kover`.|
+| Name                   | Description                                                                  |
+|------------------------|------------------------------------------------------------------------------|
+| `github-token`         | `secrets.GITHUB_TOKEN` value                                                 |
+| `xml-test-report-path` | Multiple path of `.xml` type TEST REPORT generated from `jacoco` or `kover`. |
 
 ## Example Workflow File
 
