@@ -57,8 +57,8 @@ def create_review_comment(comment):
 
 
 def calc_coverage(covered, missed):
-    if covered + missed == 0:
-        return "0%"
+    if float(missed) + float(covered) == 0.0:
+        return "none"
     return f"{round(float(covered) / (float(missed) + float(covered)) * 100, 2)}% " \
            f"({int(covered)}/{int(covered) + int(missed)})"
 
@@ -89,8 +89,9 @@ def generate_changed_files_table(changed_files_coverage):
     return text
 
 
-def generate_table(coverage_map):
-    text = "## Total Test Coverage:\n"
+def generate_table(name, coverage_map):
+    text = f"# {name}\n"
+    text += f"## Total Test Coverage:\n"
     text += "|Type|Coverage|\n"
     text += "|---|---|\n"
     for coverage_type in coverage_map:
@@ -154,20 +155,29 @@ def build_total_coverage(root):
 
 
 def main():
-    tree = parse(xml_path)
-    root = tree.getroot()
+    comment = ""
+    for i, xml_path in enumerate(xml_paths):
+        try:
+            tree = parse(xml_path)
+            root = tree.getroot()
+        except:
+            continue
 
-    coverage = build_total_coverage(root)
-    try:
-        changed_files_coverage = build_changed_files_coverage(root)
-    except Exception as e:
-        print("build_changed_files_coverage-error,", e)
-        changed_files_coverage = {}
+        coverage = build_total_coverage(root)
+        try:
+            changed_files_coverage = build_changed_files_coverage(root)
+        except Exception as e:
+            print("build_changed_files_coverage-error,", e)
+            changed_files_coverage = {}
 
-    comment = generate_table(coverage)
-    if changed_files_coverage:
-        comment += "\n<br>\n\n"
-        comment += generate_changed_files_table(changed_files_coverage)
+        name = xml_path.split("/")[0]
+        comment += generate_table(name, coverage)
+        if changed_files_coverage:
+            comment += "\n<br>\n\n"
+            comment += generate_changed_files_table(changed_files_coverage)
+
+        if i + 1 < len(xml_paths):
+            comment += "\n<br>\n\n---\n\n<br>\n\n"
 
     print(comment)
     create_review_comment(comment)
@@ -175,7 +185,7 @@ def main():
 
 if __name__ == '__main__':
     if len(sys.argv) > 5:
-        xml_path = sys.argv[1]
+        xml_paths = [p.strip() for p in sys.argv[1].split(",")]
         github_token = sys.argv[2]
 
         api_headers = {

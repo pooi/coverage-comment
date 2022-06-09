@@ -7,7 +7,7 @@ inputs:
     description: "secrets.GITHUB_TOKEN value"
     required: true
   xml-test-report-path:
-    description: 'The test report path (xml)'
+    description: 'The test report paths (xml, split by comma(,))'
     required: true
 
 runs:
@@ -18,4 +18,4 @@ runs:
     - name: Extract test coverage
       shell: bash
       run: |
-        $GITHUB_ACTION_PATH/main.py ${{ inputs.xml-test-report-path }} ${{ inputs.github-token }} ${{ github.api_url }} ${{ github.repository }} ${{ github.ref }} ${{ github.event.pull_request.url }}
+        $GITHUB_ACTION_PATH/main.py "${{ inputs.xml-test-report-path }}" ${{ inputs.github-token }} ${{ github.api_url }} ${{ github.repository }} ${{ github.ref }} ${{ github.event.pull_request.url }}
