@@ -8,6 +8,8 @@ import requests
 
 changed_file_target_type = ["INSTRUCTION", "LINE", "METHOD"]
 target_type = ["INSTRUCTION", "LINE", "METHOD", "CLASS"]
+comment_marker = "<!-- coverage-comment -->"
+legacy_comment_signature = "## Total Test Coverage:\n|Type|Coverage|\n|---|---|"
 
 
 def find_pull_request():
@@ -40,6 +42,78 @@ def get_pull_request_files():
         return []
 
 
+def get_pull_request_comments():
+    comments = []
+    page = 1
+    comments_url = f"{pull_request_url}/comments".replace("/pulls/", "/issues/")
+
+    while True:
+        response = requests.get(
+            comments_url,
+            headers=api_headers,
+            params={"per_page": 100, "page": page}
+        )
+        if not response.ok:
+            raise RuntimeError(
+                f"GET-REVIEW-COMMENTS-ERROR, code={response.status_code}, body={response.text}"
+            )
+
+        page_comments = response.json()
+        comments.extend(page_comments)
+        if len(page_comments) < 100:
+            return comments
+        page += 1
+
+
+def get_authenticated_login():
+    response = requests.get(
+        f"{github_api_url}/user",
+        headers=api_headers
+    )
+    if response.ok:
+        return response.json()["login"]
+
+    # GITHUB_TOKEN is an installation token, so the user endpoint may be
+    # unavailable even though comments are written by github-actions[bot].
+    if response.status_code == 403:
+        return None
+
+    raise RuntimeError(
+        f"GET-AUTHENTICATED-USER-ERROR, code={response.status_code}, body={response.text}"
+    )
+
+
+def find_review_comment(comments):
+    marked_comments = [
+        comment for comment in comments
+        if comment_marker in (comment.get("body") or "")
+    ]
+    if marked_comments:
+        return max(marked_comments, key=lambda comment: comment["id"])
+
+    legacy_comments = [
+        comment for comment in comments
+        if legacy_comment_signature in (comment.get("body") or "")
+    ]
+    if not legacy_comments:
+        return None
+
+    authenticated_login = get_authenticated_login()
+    expected_login = authenticated_login or "github-actions[bot]"
+    own_legacy_comments = [
+        comment for comment in legacy_comments
+        if comment.get("user", {}).get("login") == expected_login
+    ]
+    if not own_legacy_comments:
+        return None
+    return max(own_legacy_comments, key=lambda comment: comment["id"])
+
+
+def add_comment_marker(comment):
+    body = comment.replace(comment_marker, "").lstrip()
+    return f"{comment_marker}\n{body}"
+
+
 def create_review_comment(comment):
     response = requests.post(
         f"{pull_request_url}/comments".replace("/pulls/", "/issues/"),
@@ -51,9 +125,33 @@ def create_review_comment(comment):
 
     if response.ok:
         return response.json()
-    else:
-        print(f"CREATE-REVIEW-COMMENT-ERROR, code={response.status_code}, body={response.json()}")
-        return None
+    raise RuntimeError(
+        f"CREATE-REVIEW-COMMENT-ERROR, code={response.status_code}, body={response.text}"
+    )
+
+
+def update_review_comment(review_comment, comment):
+    response = requests.patch(
+        review_comment["url"],
+        headers=api_headers,
+        json={
+            "body": comment
+        }
+    )
+
+    if response.ok:
+        return response.json()
+    raise RuntimeError(
+        f"UPDATE-REVIEW-COMMENT-ERROR, code={response.status_code}, body={response.text}"
+    )
+
+
+def upsert_review_comment(comment):
+    marked_comment = add_comment_marker(comment)
+    review_comment = find_review_comment(get_pull_request_comments())
+    if review_comment is None:
+        return create_review_comment(marked_comment)
+    return update_review_comment(review_comment, marked_comment)
 
 
 def calc_coverage(covered, missed):
@@ -180,7 +278,7 @@ def main():
             comment += "\n<br>\n\n---\n\n<br>\n\n"
 
     print(comment)
-    create_review_comment(comment)
+    upsert_review_comment(comment)
 
 
 if __name__ == '__main__':

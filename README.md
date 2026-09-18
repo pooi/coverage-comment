@@ -13,10 +13,16 @@ This action leave a test coverage comment on pull request.
 
 ## Example Workflow File
 
+The token needs write access to pull requests or issues so the action can create
+and update its coverage comment.
+
 ```yaml
 jobs:
   pr-check:
     runs-on: ubuntu-18.04
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v2
 
